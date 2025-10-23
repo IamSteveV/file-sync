@@ -127,6 +127,52 @@ filesync apply-policies --dry-run
 filesync apply-policies
 ```
 
+## Graphical User Interface (GUI)
+
+FileSync includes a modern desktop GUI built with CustomTkinter:
+
+### Launching the GUI
+
+```bash
+filesync-gui
+```
+
+### GUI Features
+
+- **Dashboard** - Visual overview with statistics and charts
+- **File Management** - Add, browse, search, and manage files with drag-and-drop
+- **Validation View** - Visual redundancy checking and file verification
+- **Provider Configuration** - Easy cloud provider setup
+- **Settings Panel** - Configure paths, encryption, and preferences
+
+### GUI Screenshots
+
+The GUI provides:
+- Modern dark theme interface
+- Real-time statistics and monitoring
+- Easy file addition with visual tier selection
+- Interactive file browsing with search and filters
+- One-click redundancy validation
+- Visual representation of file locations
+
+For detailed GUI usage instructions, see [GUI_USAGE.md](GUI_USAGE.md).
+
+### GUI vs CLI
+
+**Use the GUI when you want:**
+- Visual file management
+- Quick overview of system status
+- Easy file browsing and search
+- Interactive configuration
+
+**Use the CLI when you want:**
+- Automation and scripting
+- Batch operations
+- Remote server management
+- Integration with other tools
+
+Both interfaces provide full functionality and use the same core engine.
+
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed system design.

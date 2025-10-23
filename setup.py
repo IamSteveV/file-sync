@@ -23,6 +23,7 @@ setup(
     install_requires=[
         "cryptography>=41.0.0",
         "click>=8.1.0",
+        "customtkinter>=5.2.0",
     ],
     extras_require={
         "gdrive": [
@@ -46,6 +47,7 @@ setup(
     entry_points={
         "console_scripts": [
             "filesync=filesync.cli.main:cli",
+            "filesync-gui=filesync.gui.main:main",
         ],
     },
     classifiers=[
