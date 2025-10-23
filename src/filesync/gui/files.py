@@ -4,13 +4,14 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 from ..core.manifest import ManifestManager
 from ..core.sync import SyncEngine
 from ..models.tier import Tier
 from ..encryption.crypto import key_manager
 from .dialogs import PassphraseDialog
 from .batch_add_dialog import BatchAddDialog
+from .advanced_search_dialog import AdvancedSearchDialog
 
 
 class FilesFrame(ctk.CTkFrame):
@@ -21,6 +22,7 @@ class FilesFrame(ctk.CTkFrame):
         self.manifest = manifest
         self.sync = sync
         self.app = app
+        self.advanced_search_criteria = None  # Store advanced search criteria
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(3, weight=1)  # Changed from 2 to 3
@@ -75,6 +77,17 @@ class FilesFrame(ctk.CTkFrame):
         self.tier_filter.grid(row=0, column=1, padx=(0, 10))
         self.tier_filter.set("All Tiers")
 
+        advanced_search_btn = ctk.CTkButton(
+            search_frame,
+            text="🔍 Advanced",
+            command=self._open_advanced_search,
+            width=110,
+            height=35,
+            fg_color="gray40",
+            hover_color="gray50"
+        )
+        advanced_search_btn.grid(row=0, column=2, padx=(0, 10))
+
         refresh_btn = ctk.CTkButton(
             search_frame,
             text="🔄 Refresh",
@@ -82,7 +95,7 @@ class FilesFrame(ctk.CTkFrame):
             width=100,
             height=35
         )
-        refresh_btn.grid(row=0, column=2)
+        refresh_btn.grid(row=0, column=3)
 
         # Drag and drop zone
         self._create_drop_zone()
@@ -192,6 +205,11 @@ class FilesFrame(ctk.CTkFrame):
         entries = self.manifest.get_all_entries()
 
         for entry in entries:
+            # Apply advanced search criteria first
+            if self.advanced_search_criteria:
+                if not self._matches_advanced_criteria(entry, self.advanced_search_criteria):
+                    continue
+
             # Apply tier filter
             if tier_filter != "All Tiers" and entry.tier.name != tier_filter.upper():
                 continue
@@ -631,3 +649,94 @@ class FileDetailsDialog(ctk.CTkToplevel):
                 return f"{size:.1f} {unit}"
             size /= 1024
         return f"{size:.1f} PB"
+
+    def _open_advanced_search(self):
+        """Open advanced search dialog."""
+        AdvancedSearchDialog(self, self._apply_advanced_search)
+
+    def _apply_advanced_search(self, criteria: Dict[str, Any]):
+        """Apply advanced search criteria to file list."""
+        self.advanced_search_criteria = criteria
+
+        # Show indicator that advanced search is active
+        if criteria:
+            self.search_entry.configure(
+                placeholder_text=f"Advanced search active ({len(criteria)} filters)"
+            )
+
+        # Reload files with new criteria
+        self._load_files()
+
+    def _matches_advanced_criteria(self, entry, criteria: Dict[str, Any]) -> bool:
+        """Check if an entry matches advanced search criteria."""
+        if not criteria:
+            return True
+
+        # Filename filter
+        if 'filename' in criteria:
+            pattern = criteria['filename'].lower().replace('*', '.*')
+            import re
+            if not re.search(pattern, entry.file_name.lower()):
+                return False
+
+        # Tags filter
+        if 'tags' in criteria:
+            search_tags = set(criteria['tags'])
+            entry_tags = set(entry.tags)
+
+            if criteria.get('tag_match_mode') == 'all':
+                if not search_tags.issubset(entry_tags):
+                    return False
+            else:  # any
+                if not search_tags.intersection(entry_tags):
+                    return False
+
+        # Date filter
+        if 'date_from' in criteria or 'date_to' in criteria:
+            from datetime import datetime
+
+            date_type = criteria.get('date_type', 'created')
+            timestamp = entry.created_at if date_type == 'created' else entry.updated_at
+
+            if timestamp:
+                file_date = datetime.fromtimestamp(timestamp)
+
+                if 'date_from' in criteria:
+                    from_date = datetime.strptime(criteria['date_from'], '%Y-%m-%d')
+                    if file_date < from_date:
+                        return False
+
+                if 'date_to' in criteria:
+                    to_date = datetime.strptime(criteria['date_to'], '%Y-%m-%d')
+                    to_date = to_date.replace(hour=23, minute=59, second=59)
+                    if file_date > to_date:
+                        return False
+
+        # Size filter
+        if 'size_min' in criteria:
+            if entry.size < criteria['size_min']:
+                return False
+
+        if 'size_max' in criteria:
+            if entry.size > criteria['size_max']:
+                return False
+
+        # Tier filter
+        if 'tiers' in criteria:
+            if entry.tier.value not in criteria['tiers']:
+                return False
+
+        # Provider filter
+        if 'providers' in criteria:
+            entry_providers = {loc.provider for loc in entry.locations}
+            search_providers = set(criteria['providers'])
+
+            if not entry_providers.intersection(search_providers):
+                return False
+
+        # Encryption filter
+        if 'encrypted' in criteria:
+            if entry.encrypted != criteria['encrypted']:
+                return False
+
+        return True
