@@ -2,6 +2,9 @@
 
 import customtkinter as ctk
 from tkinter import messagebox
+from pathlib import Path
+from ..auth.oauth2 import OAuth2Manager
+from .oauth_dialogs import OAuth2ConfigDialog
 
 
 class ProvidersFrame(ctk.CTkFrame):
@@ -11,6 +14,10 @@ class ProvidersFrame(ctk.CTkFrame):
         super().__init__(parent)
         self.providers = providers
         self.app = app
+
+        # Initialize OAuth2 manager
+        creds_dir = Path.home() / ".filesync" / "credentials"
+        self.oauth_manager = OAuth2Manager(creds_dir)
 
         self.grid_columnconfigure(0, weight=1)
 
@@ -50,7 +57,7 @@ class ProvidersFrame(ctk.CTkFrame):
             "gdrive",
             "Google Drive cloud storage (requires OAuth2)",
             3,
-            enabled=False
+            enabled=self.oauth_manager.has_credentials("gdrive")
         )
 
         # OneDrive
@@ -59,7 +66,7 @@ class ProvidersFrame(ctk.CTkFrame):
             "onedrive",
             "Microsoft OneDrive cloud storage (requires OAuth2)",
             4,
-            enabled=False
+            enabled=self.oauth_manager.has_credentials("onedrive")
         )
 
         # Box
@@ -68,7 +75,7 @@ class ProvidersFrame(ctk.CTkFrame):
             "box",
             "Box cloud storage (requires OAuth2)",
             5,
-            enabled=False
+            enabled=self.oauth_manager.has_credentials("box")
         )
 
         # Proton Drive
@@ -173,27 +180,52 @@ class ProvidersFrame(ctk.CTkFrame):
 
     def _configure_provider(self, provider_id: str):
         """Configure a cloud provider."""
-        messagebox.showinfo(
-            "Coming Soon",
-            f"Cloud provider configuration will be available in a future update.\n\n"
-            f"For now, you can:\n"
-            f"1. Manually add OAuth2 credentials to config.yaml\n"
-            f"2. Use the CLI: filesync init --provider {provider_id}\n"
-            f"3. Refer to the README for provider setup instructions",
-            parent=self
-        )
+        dialog = OAuth2ConfigDialog(self, provider_id, self.oauth_manager)
+        dialog.wait_window()
+
+        if dialog.success:
+            # Refresh the view to show connected status
+            for widget in self.winfo_children():
+                widget.destroy()
+            self._create_widgets()
+
+            # Notify app to reload providers
+            self.app.set_status(f"{provider_id} connected successfully")
+            messagebox.showinfo(
+                "Success",
+                f"Provider '{provider_id}' has been configured.\n\n"
+                f"You can now use it to upload and sync files.",
+                parent=self
+            )
 
     def _disconnect_provider(self, provider_id: str):
         """Disconnect a cloud provider."""
+        # Confirm deletion
+        if not messagebox.askyesno(
+            "Confirm Disconnect",
+            f"Are you sure you want to disconnect {provider_id}?\n\n"
+            f"This will remove OAuth2 credentials but keep your files safe.",
+            parent=self
+        ):
+            return
+
+        # Delete credentials
+        self.oauth_manager.delete_credentials(provider_id)
+
+        # Remove from providers if exists
         if provider_id in self.providers:
             del self.providers[provider_id]
-            messagebox.showinfo(
-                "Disconnected",
-                f"Provider '{provider_id}' has been disconnected.",
-                parent=self
-            )
-            # Refresh view
-            self._create_widgets()
+
+        messagebox.showinfo(
+            "Disconnected",
+            f"Provider '{provider_id}' has been disconnected.",
+            parent=self
+        )
+
+        # Refresh view
+        for widget in self.winfo_children():
+            widget.destroy()
+        self._create_widgets()
 
     def _view_local_storage(self):
         """View local storage information."""

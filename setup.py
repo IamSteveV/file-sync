@@ -38,6 +38,20 @@ setup(
         "box": [
             "boxsdk>=3.9.0",
         ],
+        "tray": [
+            "pystray>=0.19.0",
+            "Pillow>=10.0.0",
+        ],
+        "full": [
+            "pystray>=0.19.0",
+            "Pillow>=10.0.0",
+            "google-api-python-client>=2.100.0",
+            "google-auth-httplib2>=0.1.1",
+            "google-auth-oauthlib>=1.1.0",
+            "msal>=1.24.0",
+            "requests>=2.31.0",
+            "boxsdk>=3.9.0",
+        ],
         "dev": [
             "pytest>=7.4.0",
             "black>=23.9.0",

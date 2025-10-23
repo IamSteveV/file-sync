@@ -10,6 +10,7 @@ from ..core.sync import SyncEngine
 from ..models.tier import Tier
 from ..encryption.crypto import key_manager
 from .dialogs import PassphraseDialog
+from .batch_add_dialog import BatchAddDialog
 
 
 class FilesFrame(ctk.CTkFrame):
@@ -22,9 +23,10 @@ class FilesFrame(ctk.CTkFrame):
         self.app = app
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(3, weight=1)  # Changed from 2 to 3
 
         self._create_widgets()
+        self._setup_drag_and_drop()
         self._load_files()
 
     def _create_widgets(self):
@@ -82,13 +84,29 @@ class FilesFrame(ctk.CTkFrame):
         )
         refresh_btn.grid(row=0, column=2)
 
+        # Drag and drop zone
+        self._create_drop_zone()
+
         # Files list
         self._create_file_list()
+
+    def _create_drop_zone(self):
+        """Create drag-and-drop zone for files."""
+        self.drop_zone = ctk.CTkFrame(self, height=80, fg_color="gray20", corner_radius=8)
+        self.drop_zone.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+
+        self.drop_label = ctk.CTkLabel(
+            self.drop_zone,
+            text="📁 Drag and drop files here to add them",
+            font=ctk.CTkFont(size=14),
+            text_color="gray50"
+        )
+        self.drop_label.place(relx=0.5, rely=0.5, anchor="center")
 
     def _create_file_list(self):
         """Create the scrollable file list."""
         list_frame = ctk.CTkFrame(self)
-        list_frame.grid(row=2, column=0, sticky="nsew")
+        list_frame.grid(row=3, column=0, sticky="nsew")
         list_frame.grid_columnconfigure(0, weight=1)
         list_frame.grid_rowconfigure(0, weight=1)
 
@@ -225,6 +243,77 @@ class FilesFrame(ctk.CTkFrame):
         """Show context menu for file operations."""
         # TODO: Implement context menu
         pass
+
+    def _setup_drag_and_drop(self):
+        """Setup drag and drop functionality."""
+        # Enable drop on the drop zone
+        self.drop_zone.drop_target_register(tk.DND_FILES)
+        self.drop_zone.dnd_bind('<<Drop>>', self._on_drop)
+
+        # Also bind drag enter/leave for visual feedback
+        self.drop_zone.bind('<Enter>', self._on_drag_enter)
+        self.drop_zone.bind('<Leave>', self._on_drag_leave)
+
+    def _on_drag_enter(self, event):
+        """Handle drag enter event."""
+        self.drop_zone.configure(fg_color="gray30")
+        self.drop_label.configure(text="📁 Drop files to add them", text_color="lightblue")
+
+    def _on_drag_leave(self, event):
+        """Handle drag leave event."""
+        self.drop_zone.configure(fg_color="gray20")
+        self.drop_label.configure(
+            text="📁 Drag and drop files here to add them",
+            text_color="gray50"
+        )
+
+    def _on_drop(self, event):
+        """Handle file drop event."""
+        # Reset visual feedback
+        self._on_drag_leave(None)
+
+        # Get dropped files
+        files = self._parse_drop_data(event.data)
+
+        if not files:
+            return
+
+        # Show quick add dialog for multiple files
+        if len(files) > 1:
+            self._add_multiple_files(files)
+        else:
+            # Single file - use normal dialog
+            self._add_dropped_file(files[0])
+
+    def _parse_drop_data(self, data):
+        """Parse dropped file paths from event data."""
+        # Handle different formats of drop data
+        if isinstance(data, str):
+            # Split by spaces, handling quoted paths
+            import shlex
+            try:
+                files = shlex.split(data)
+            except:
+                files = data.split()
+
+            # Filter to existing files
+            return [Path(f) for f in files if Path(f).is_file()]
+        return []
+
+    def _add_dropped_file(self, file_path: Path):
+        """Add a single dropped file."""
+        # Pre-populate the add dialog with the file
+        dialog = AddFileDialog(self, self.manifest, self.sync, self.app)
+        dialog.file_path = file_path
+        dialog.file_label.configure(text=file_path.name)
+        dialog.wait_window()
+        self._load_files()
+
+    def _add_multiple_files(self, files: list):
+        """Add multiple dropped files at once."""
+        dialog = BatchAddDialog(self, files, self.manifest, self.sync, self.app)
+        dialog.wait_window()
+        self._load_files()
 
     def _format_bytes(self, size: int) -> str:
         """Format bytes as human-readable string."""

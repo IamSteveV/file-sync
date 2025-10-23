@@ -141,8 +141,12 @@ filesync-gui
 
 - **Dashboard** - Visual overview with statistics and charts
 - **File Management** - Add, browse, search, and manage files with drag-and-drop
+- **Drag-and-Drop** - Drag files directly into the GUI to add them
+- **Keyboard Shortcuts** - Full keyboard navigation (Ctrl+1-5, Ctrl+N, F5, etc.)
 - **Validation View** - Visual redundancy checking and file verification
-- **Provider Configuration** - Easy cloud provider setup
+- **Provider Configuration** - OAuth2 setup for Google Drive, OneDrive, Box
+- **System Tray** - Minimize to system tray, run in background
+- **Auto-Sync Daemon** - Automatic redundancy validation and lifecycle management
 - **Settings Panel** - Configure paths, encryption, and preferences
 
 ### GUI Screenshots

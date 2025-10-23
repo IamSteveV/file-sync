@@ -8,11 +8,14 @@ from .files import FilesFrame
 from .settings import SettingsFrame
 from .providers import ProvidersFrame
 from .validation import ValidationFrame
+from .shortcuts import setup_shortcuts
+from .system_tray import setup_system_tray, minimize_to_tray
 from ..core.manifest import ManifestManager
 from ..providers.local import LocalProvider
 from ..core.sync import SyncEngine
 from ..core.redundancy import RedundancyManager
 from ..core.lifecycle import LifecycleManager
+from ..daemon.auto_sync import AutoSyncDaemon
 
 
 class FileSyncApp(ctk.CTk):
@@ -36,6 +39,8 @@ class FileSyncApp(ctk.CTk):
         self.sync: Optional[SyncEngine] = None
         self.redundancy: Optional[RedundancyManager] = None
         self.lifecycle: Optional[LifecycleManager] = None
+        self.daemon: Optional[AutoSyncDaemon] = None
+        self.system_tray = None
 
         # Initialize components if manifest exists
         self._initialize_components()
@@ -43,6 +48,18 @@ class FileSyncApp(ctk.CTk):
         # Create UI
         self._create_sidebar()
         self._create_main_content()
+
+        # Setup keyboard shortcuts
+        self.shortcuts = setup_shortcuts(self)
+
+        # Setup system tray (optional)
+        self.system_tray = setup_system_tray(self)
+        if self.system_tray:
+            minimize_to_tray(self)
+
+        # Start auto-sync daemon if manifest exists
+        if self.manifest and self.sync:
+            self._start_daemon()
 
         # Show dashboard by default
         self.show_dashboard()
@@ -270,11 +287,68 @@ class FileSyncApp(ctk.CTk):
     def reload_components(self):
         """Reload components after initialization."""
         self._initialize_components()
+
+        # Restart daemon if components are available
+        if self.manifest and self.sync and not self.daemon:
+            self._start_daemon()
+
         self.show_dashboard()
+
+    def _start_daemon(self):
+        """Start the auto-sync daemon."""
+        if not self.manifest or not self.sync:
+            return
+
+        self.daemon = AutoSyncDaemon(
+            self.manifest,
+            self.sync,
+            self.redundancy,
+            self.lifecycle
+        )
+
+        # Setup callbacks
+        self.daemon.set_status_callback(self._daemon_status_update)
+        self.daemon.set_notification_callback(self._daemon_notification)
+
+        # Start daemon
+        self.daemon.start()
+        self.set_status("Auto-sync daemon started")
+
+    def _stop_daemon(self):
+        """Stop the auto-sync daemon."""
+        if self.daemon:
+            self.daemon.stop()
+            self.daemon = None
+            self.set_status("Auto-sync daemon stopped")
+
+    def _daemon_status_update(self, message: str):
+        """Handle daemon status updates."""
+        # Update UI from main thread
+        self.after(0, lambda: self.set_status(f"Daemon: {message}"))
+
+        # Update system tray if available
+        if self.system_tray:
+            self.system_tray.update_status(message)
+
+    def _daemon_notification(self, title: str, message: str, urgent: bool = False):
+        """Handle daemon notifications."""
+        # Show system notification if available
+        if self.system_tray:
+            self.system_tray.show_notification(title, message)
+
+        # Log to console
+        print(f"[Daemon] {title}: {message}")
 
     def run(self):
         """Start the application."""
-        self.mainloop()
+        try:
+            self.mainloop()
+        finally:
+            # Cleanup on exit
+            if self.daemon:
+                self.daemon.stop()
+            if self.system_tray:
+                self.system_tray.stop()
 
 
 def main():
