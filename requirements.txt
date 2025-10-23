@@ -1,0 +1,26 @@
+# Core dependencies
+cryptography>=41.0.0
+click>=8.1.0
+
+# Optional dependencies for cloud providers
+# Uncomment as needed:
+
+# Google Drive
+# google-api-python-client>=2.100.0
+# google-auth-httplib2>=0.1.1
+# google-auth-oauthlib>=1.1.0
+
+# OneDrive
+# msal>=1.24.0
+# requests>=2.31.0
+
+# Box
+# boxsdk>=3.9.0
+
+# Proton Drive
+# (waiting for official API)
+
+# Development dependencies
+# pytest>=7.4.0
+# black>=23.9.0
+# mypy>=1.5.0
