@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=FileSync
+GenericName=Cloud Storage Manager
+Comment=Cloud Storage Deduplication System with Importance-Based Tiering
+Exec=filesync-gui
+Icon=filesync
+Terminal=false
+Categories=Utility;FileTools;Archiving;System;
+Keywords=backup;cloud;sync;deduplication;encryption;storage;redundancy;
+StartupNotify=true
+StartupWMClass=FileSync
