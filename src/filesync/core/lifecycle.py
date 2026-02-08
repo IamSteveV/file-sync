@@ -120,11 +120,9 @@ class LifecycleManager:
 
     def remove_policy(self, name: str) -> bool:
         """Remove a policy by name."""
-        for i, policy in enumerate(self.policies):
-            if policy.name == name:
-                self.policies.pop(i)
-                return True
-        return False
+        original_len = len(self.policies)
+        self.policies = [p for p in self.policies if p.name != name]
+        return len(self.policies) < original_len
 
     def enable_policy(self, name: str) -> bool:
         """Enable a policy by name."""

@@ -234,8 +234,9 @@ class AutoImportConfig:
     def remove_folder(self, path: Path) -> bool:
         """Remove a folder from watch list."""
         path_str = str(path.absolute())
-        for i, folder in enumerate(self.watched_folders):
-            if folder["path"] == path_str:
-                self.watched_folders.pop(i)
-                return True
-        return False
+        original_len = len(self.watched_folders)
+        self.watched_folders = [
+            folder for folder in self.watched_folders
+            if folder["path"] != path_str
+        ]
+        return len(self.watched_folders) < original_len

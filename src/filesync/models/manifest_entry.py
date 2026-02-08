@@ -133,11 +133,14 @@ class ManifestEntry:
 
     def remove_location(self, provider: str, path: str) -> bool:
         """Remove a location. Returns True if found and removed."""
-        for i, loc in enumerate(self.locations):
-            if loc.provider == provider and loc.path == path:
-                self.locations.pop(i)
-                self.modified_at = datetime.utcnow()
-                return True
+        original_len = len(self.locations)
+        self.locations = [
+            loc for loc in self.locations
+            if not (loc.provider == provider and loc.path == path)
+        ]
+        if len(self.locations) < original_len:
+            self.modified_at = datetime.utcnow()
+            return True
         return False
 
     def get_providers(self) -> List[str]:
